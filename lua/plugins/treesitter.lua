@@ -2,15 +2,26 @@ conf = {
   'nvim-treesitter/nvim-treesitter',
   lazy = false,
   build = ':TSUpdate',
+  dependencies = {
+    "windwp/nvim-ts-autotag"
+  },
   config = function()
     -- my config here
-    treeSitterPath = vim.fn.stdpath('data') .. '/treesitter'
-    require('nvim-treesitter').setup({
+    local treeSitterPath = vim.fn.stdpath('data') .. '/treesitter'
+    local nvim_tree_sitter = require('nvim-treesitter')
+    nvim_tree_sitter.setup({
       install_dir = treeSitterPath
     })
     vim.opt.rtp:prepend(treeSitterPath)
-    require('nvim-treesitter').install({
-      'rust','cpp', 'java','kotlin','javascript','typescript', 'tsx','python','sql','html'
+    nvim_tree_sitter.install({
+       'rust','cpp', 'java','kotlin','javascript','typescript', 'tsx','python','sql','html', 'xml','vim','vimdoc','lua','markdown','markdown_inline','gitignore'
+    })
+    vim.api.nvim_create_autocmd('FileType' , {
+      pattern = {'rust','cpp', 'java','kotlin','javascript','typescript', 'tsx','python','sql','html', 'xml','vim','vimdoc','lua','markdown','markdown_inline','gitignore'},
+      callback = function()
+        vim.treesitter.start()
+        vim.bo.indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
+      end,
     })
 
   end
