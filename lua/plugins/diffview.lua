@@ -1,6 +1,6 @@
 return {
   "sindrets/diffview.nvim",
-  config = function() 
+  config = function()
     require("diffview").setup()
   end
 }

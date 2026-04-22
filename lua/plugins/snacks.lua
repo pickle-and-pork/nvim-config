@@ -3,9 +3,17 @@ local snacks_plugin = {
   priority = 1000,
   lazy = false,
   ---@type snacks.Config
-  opts = {},
+  opts = {
+    lazygit  = {},
+    terminal = {},
+    scroll   = { enabled = true },
+    animate  = {},
+  },
+  keys = {
+    -- Option+F7 in kitty sends <F55> (kitty keyboard protocol encoding)
+    { "<F55>",  function() Snacks.lazygit.open() end, desc = "Launch lazygit" },
+    { "<A-`>",  function() Snacks.terminal() end,     desc = "Toggle terminal" },
+  },
 }
-
-
 
 return snacks_plugin
