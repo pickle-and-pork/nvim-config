@@ -69,15 +69,23 @@ local nvim_jdtls_conf = {
     vim.api.nvim_create_autocmd("FileType", {
       pattern = "java",
       callback = function()
-        -- Walk up from the current file looking for the topmost pom.xml or
-        -- build.gradle. This correctly handles Maven/Gradle multi-module layouts:
-        -- we keep ascending as long as we keep finding build files, stopping at
-        -- the highest ancestor that still has one — that is the project root.
+        -- Walk up from the current file looking for the topmost build file.
+        -- Maven: pom.xml at every module level — topmost wins.
+        -- Gradle Groovy DSL: build.gradle / settings.gradle / gradlew.
+        -- Gradle Kotlin DSL: build.gradle.kts / settings.gradle.kts.
+        -- Gradle multi-module roots often have only settings.gradle(.kts) or
+        -- gradlew at the top with no build.gradle there — all are valid anchors.
         local path = vim.fn.expand("%:p:h")
         local root_dir = nil
 
         for dir in vim.fs.parents(path) do
-          if vim.uv.fs_stat(dir .. "/pom.xml") or vim.uv.fs_stat(dir .. "/build.gradle") then
+          if vim.uv.fs_stat(dir .. "/pom.xml")
+            or vim.uv.fs_stat(dir .. "/build.gradle")
+            or vim.uv.fs_stat(dir .. "/build.gradle.kts")
+            or vim.uv.fs_stat(dir .. "/settings.gradle")
+            or vim.uv.fs_stat(dir .. "/settings.gradle.kts")
+            or vim.uv.fs_stat(dir .. "/gradlew")
+          then
             root_dir = dir
           end
         end
