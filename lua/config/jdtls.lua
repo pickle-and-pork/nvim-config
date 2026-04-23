@@ -102,6 +102,8 @@ local config_ss_dir = jdtls_base .. "/config_ss" .. platform_suffix
 -- =============================================================================
 
 local function detect_runtimes()
+  local sdkman_java = vim.fn.expand("$HOME/.sdkman/candidates/java")
+
    -- Fail fast: sdkman itself must be present.
   assert(
     vim.fn.isdirectory(vim.fn.expand("$HOME/.sdkman")) == 1,
@@ -126,7 +128,6 @@ local function detect_runtimes()
   )
 
   local runtimes    = {}
-  local sdkman_java = vim.fn.expand("$HOME/.sdkman/candidates/java")
 
   -- Resolve the "current" symlink once; we compare against it per-candidate.
   local current_real = vim.fn.resolve(sdkman_java .. "/current")
@@ -159,7 +160,6 @@ local function detect_runtimes()
         })
 end
 
-return M
 
 -- =============================================================================
 -- USAGE
@@ -322,7 +322,8 @@ end
 --    fresh table to avoid shared-state mutations across buffers.
 -- =============================================================================
 
-local function make_settings()
+local function make_settings(overrides, root_dir)
+  overrides = overrides or {}
   return {
     java = {
 
@@ -497,7 +498,7 @@ local function make_settings()
         -- Automatically refresh classpath when pom.xml or build.gradle changes.
         -- "interactive" would prompt each time; "automatic" keeps the IDE in sync.
         updateBuildConfiguration = "automatic",
-        maven    = { downloadSources = true },
+        maven    = { downloadSources = true, executable = { path = (root_dir or "") .. "/mvnw" } },
         -- Populated dynamically from ~/.sdkman/candidates/java/* at module load.
         runtimes = detect_runtimes(),
       },
@@ -505,7 +506,7 @@ local function make_settings()
       -- ── Project import ────────────────────────────────────────────────────
       import = {
         gradle = {
-          enabled  = true,
+          enabled  = overrides.gradle_enabled ~= nil and overrides.gradle_enabled or true,
           -- Prefer the project's own gradlew over a system Gradle installation.
           wrapper  = { enabled = true },
           -- Run annotation processors (needed for Lombok, MapStruct, Dagger, etc.).
@@ -513,7 +514,7 @@ local function make_settings()
           offline  = { enabled = false },
         },
         maven = {
-          enabled = true,
+          enabled = overrides.maven_enabled ~= nil and overrides.maven_enabled or true,
           offline = { enabled = false },
           -- Download sources so you can navigate into library code.
           downloadSources = true,
@@ -703,7 +704,7 @@ end
 --- @param on_attach function|nil  Called when the client attaches to a buffer.
 ---                                 Receives (client, bufnr). Sets keymaps + DAP.
 --- @return table  Config table ready to pass to jdtls.start_or_attach().
-function M.make_standard_config(root_dir, workspace_dir, on_attach)
+function M.make_standard_config(root_dir, workspace_dir, on_attach, overrides)
   return {
     name     = "jdtls",
     cmd      = build_cmd(workspace_dir, false),
@@ -713,9 +714,20 @@ function M.make_standard_config(root_dir, workspace_dir, on_attach)
       -- All extension jars: debug adapter + test runner + decompiler.
       bundles = bundles,
       extendedClientCapabilities = extended_client_capabilities,
+      -- Mirror the gradle/maven enabled flags here so jdtls applies them
+      -- before project scanning begins (Buildship reads initializationOptions
+      -- before it starts importing, unlike workspace/didChangeConfiguration).
+      settings = {
+        java = {
+          import = {
+            gradle = { enabled = overrides.gradle_enabled ~= false },
+            maven  = { enabled = overrides.maven_enabled  ~= false },
+          },
+        },
+      },
     },
 
-    settings     = make_settings(),
+    settings     = make_settings(overrides, root_dir),
     capabilities = vim.lsp.protocol.make_client_capabilities(),
 
     -- on_attach is provided by after/ftplugin/java.lua and sets all keymaps,
@@ -724,3 +736,4 @@ function M.make_standard_config(root_dir, workspace_dir, on_attach)
   }
 end
 
+return M

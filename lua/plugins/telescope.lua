@@ -15,6 +15,7 @@ return {
         vim.keymap.set('n', '<leader>fe', builtin.oldfiles, { desc = 'Telescope find recent files' })
         vim.keymap.set('n', '<leader>fb', builtin.buffers, { desc = 'Telescope buffers (aka tabs)' })
         vim.keymap.set('n', '<leader>fh', builtin.help_tags, { desc = 'Telescope help tags' })
+        vim.keymap.set('n', '<leader>fn', function() require("telescope").extensions.fidget.fidget() end, { desc = 'Fidget notification history' })
       end
   },
   {

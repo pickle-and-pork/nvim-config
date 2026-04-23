@@ -14,7 +14,13 @@ local mason_lsp_conf = {
     },
     config = function()
       require("mason-lspconfig").setup({
-        ensure_installed = {"lua_ls", "rust_analyzer", "ts_ls","jdtls"},
+        -- jdtls must be in ensure_installed so mason installs it on new machines.
+        -- automatic_enable excludes it so lspconfig does NOT auto-start it —
+        -- nvim-jdtls manages the jdtls lifecycle via its own FileType autocmd.
+        ensure_installed = {"lua_ls", "rust_analyzer", "ts_ls", "jdtls"},
+        automatic_enable = {
+          exclude = { "jdtls" },
+        },
       })
     end
 }
@@ -33,8 +39,10 @@ local nvim_jdtls_conf = {
     local function on_attach(_, bufnr)
       vim.notify("jdtls: attached", INFO)
 
-      jdtls.dap.setup_dap({ hotcodereplace = "auto" })
-      jdtls.dap.setup_dap_main_class_configs()
+      if jdtls.dap then
+        jdtls.dap.setup_dap({ hotcodereplace = "auto" })
+        jdtls.dap.setup_dap_main_class_configs()
+      end
 
       local map = function(mode, lhs, rhs, desc)
         vim.keymap.set(mode, lhs, rhs, { buffer = bufnr, desc = desc })
@@ -49,9 +57,14 @@ local nvim_jdtls_conf = {
       map("n", "<leader>jb", function() jdtls.compile("incremental") end,     "[J]ava [B]uild (incremental)")
       map("n", "<leader>jB", function() jdtls.compile("full") end,            "[J]ava [B]uild Full")
       map("n", "<leader>jU", jdtls.update_project_config,                     "[J]ava [U]pdate Build Config")
-      map("n", "<leader>jt", jdtls.dap.test_nearest_method,                   "[J]ava [T]est Nearest Method")
-      map("n", "<leader>jT", jdtls.dap.test_class,                            "[J]ava [T]est Class")
-      map("n", "<leader>jP", jdtls.dap.pick_test,                             "[J]ava [P]ick Test")
+      map("n", "<leader>jf", function()
+        require("telescope.builtin").lsp_dynamic_workspace_symbols()
+      end,                                                                       "[J]ava [F]ind in Classpath")
+      if jdtls.dap then
+        map("n", "<leader>jt", jdtls.dap.test_nearest_method,                 "[J]ava [T]est Nearest Method")
+        map("n", "<leader>jT", jdtls.dap.test_class,                          "[J]ava [T]est Class")
+        map("n", "<leader>jP", jdtls.dap.pick_test,                           "[J]ava [P]ick Test")
+      end
     end
 
     local handlers = {
@@ -59,6 +72,9 @@ local nvim_jdtls_conf = {
         if result.type == "ServiceReady" then
           vim.notify("jdtls: workspace ready", INFO)
         end
+      end,
+      ["textDocument/definition"] = function(err, result, ctx, config)
+        require("jdtls").open_classfile(err, result, ctx, config)
       end,
     }
 
@@ -69,6 +85,12 @@ local nvim_jdtls_conf = {
     vim.api.nvim_create_autocmd("FileType", {
       pattern = "java",
       callback = function()
+        -- jdt:// buffers are decompiled class files opened by jdtls — they are
+        -- not real files on disk and must not trigger a new server start.
+        if vim.startswith(vim.api.nvim_buf_get_name(0), "jdt://") then
+          return
+        end
+
         -- Walk up from the current file looking for the topmost build file.
         -- Maven: pom.xml at every module level — topmost wins.
         -- Gradle Groovy DSL: build.gradle / settings.gradle / gradlew.
@@ -90,6 +112,14 @@ local nvim_jdtls_conf = {
           end
         end
 
+        -- Already attached for this root — skip re-running the full config.
+        local clients = vim.lsp.get_clients({ name = "jdtls" })
+        for _, client in ipairs(clients) do
+          if client.root_dir == root_dir then
+            return
+          end
+        end
+
         if not root_dir then
           -- No build file anywhere above — use the file's directory as a
           -- best-effort root for syntax-only mode.
@@ -106,11 +136,70 @@ local nvim_jdtls_conf = {
 
         local project_name = vim.fn.fnamemodify(root_dir, ":t")
         local workspace_dir = vim.fn.expand("~/.local/share/nvim/jdtls-workspace/") .. project_name
+        local build_system_file = workspace_dir .. "/build-system"
 
-        vim.notify("jdtls: starting (root: " .. project_name .. ")…", INFO)
-        local config = cfg.make_standard_config(root_dir, workspace_dir, on_attach)
-        config.handlers = handlers
-        jdtls.start_or_attach(config)
+        local function start_jdtls(build_system)
+          -- Persist the choice so the picker is skipped on subsequent opens.
+          vim.fn.mkdir(workspace_dir, "p")
+          local f = io.open(build_system_file, "w")
+          if f then f:write(build_system) f:close() end
+
+          if build_system == "Syntax" then
+            vim.notify("jdtls: starting syntax-only (root: " .. project_name .. ")…", INFO)
+            local config = cfg.make_syntax_config(root_dir, workspace_dir)
+            config.on_attach = on_attach_syntax
+            config.handlers  = handlers
+            jdtls.start_or_attach(config)
+            return
+          end
+
+          local overrides = {}
+          if build_system == "Maven" then
+            overrides.maven_enabled  = true
+            overrides.gradle_enabled = false
+          elseif build_system == "Gradle" then
+            overrides.maven_enabled  = false
+            overrides.gradle_enabled = true
+          end
+          vim.notify("jdtls: starting " .. build_system .. " (root: " .. project_name .. ")…", INFO)
+          local config = cfg.make_standard_config(root_dir, workspace_dir, on_attach, overrides)
+          config.handlers = handlers
+          jdtls.start_or_attach(config)
+        end
+
+        -- If the user already chose a build system for this project, use it.
+        local persisted_f = io.open(build_system_file, "r")
+        if persisted_f then
+          local choice = persisted_f:read("*l")
+          persisted_f:close()
+          if choice and choice ~= "" then
+            start_jdtls(choice)
+            return
+          end
+        end
+
+        -- Build the option list from what is actually present on disk.
+        local has_maven = vim.uv.fs_stat(root_dir .. "/pom.xml")
+          or vim.uv.fs_stat(root_dir .. "/mvnw")
+        local has_gradle = vim.uv.fs_stat(root_dir .. "/build.gradle")
+          or vim.uv.fs_stat(root_dir .. "/build.gradle.kts")
+          or vim.uv.fs_stat(root_dir .. "/settings.gradle")
+          or vim.uv.fs_stat(root_dir .. "/settings.gradle.kts")
+          or vim.uv.fs_stat(root_dir .. "/gradlew")
+
+        local options = {}
+        if has_maven  then table.insert(options, "Maven")  end
+        if has_gradle then table.insert(options, "Gradle") end
+        table.insert(options, "Syntax")
+
+        vim.schedule(function()
+          vim.ui.select(options, {
+            prompt = "jdtls — select build system for " .. project_name .. ":",
+          }, function(choice)
+            if not choice then return end
+            start_jdtls(choice)
+          end)
+        end)
       end,
     })
 
@@ -120,8 +209,36 @@ local nvim_jdtls_conf = {
         vim.notify("jdtls: no active client", vim.log.levels.WARN)
         return
       end
-      vim.lsp.buf.execute_command({ command = "java.clean.workspace" })
+      -- java.clean.workspace triggers a workspace wipe + automatic server
+      -- restart inside jdtls. Use the client directly — vim.lsp.buf.execute_command
+      -- is deprecated in Neovim 0.12.
+      clients[1]:exec_command({ command = "java.clean.workspace" })
     end, { desc = "Clean jdtls workspace index" })
+
+    -- Delete the persisted build-system choice for the current project so the
+    -- picker is shown again on the next Java file open.
+    vim.api.nvim_create_user_command("JavaResetBuildSystem", function()
+      local clients = vim.lsp.get_clients({ name = "jdtls" })
+      local root_dir
+      if #clients > 0 then
+        root_dir = clients[1].root_dir
+      else
+        root_dir = vim.fn.expand("%:p:h")
+      end
+      local project_name   = vim.fn.fnamemodify(root_dir, ":t")
+      local workspace_dir  = vim.fn.expand("~/.local/share/nvim/jdtls-workspace/") .. project_name
+      local build_sys_file = workspace_dir .. "/build-system"
+      if vim.uv.fs_stat(build_sys_file) then
+        vim.uv.fs_unlink(build_sys_file, function() end)
+        vim.notify("jdtls: build-system choice cleared for " .. project_name .. " — reopen a Java file to pick again", vim.log.levels.INFO)
+      else
+        vim.notify("jdtls: no persisted build-system choice for " .. project_name, vim.log.levels.WARN)
+      end
+      -- Stop the running client so the next open triggers a fresh start.
+      for _, client in ipairs(clients) do
+        client.stop()
+      end
+    end, { desc = "Reset jdtls build system choice and restart" })
   end,
 }
 
@@ -135,6 +252,10 @@ local lsp_conf = {
     lsp.enable('lua_ls')
 
     lsp.enable('ts_ls')
+
+    -- Explicitly disabled: jdtls is managed entirely by nvim-jdtls (see
+    -- nvim_jdtls_conf above). lspconfig must not auto-start it.
+    vim.lsp.config('jdtls', { autostart = false })
 
     vim.keymap.set("n", "<leader>co", vim.lsp.buf.hover, { desc = "[C]ode Hover D[o]cumentation" })
     vim.keymap.set("n", "<leader>cg", vim.lsp.buf.definition, { desc = "[C]ode [G]oto Defintion" })
