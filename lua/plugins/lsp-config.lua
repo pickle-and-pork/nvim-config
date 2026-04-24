@@ -17,7 +17,7 @@ local mason_lsp_conf = {
         -- jdtls must be in ensure_installed so mason installs it on new machines.
         -- automatic_enable excludes it so lspconfig does NOT auto-start it —
         -- nvim-jdtls manages the jdtls lifecycle via its own FileType autocmd.
-        ensure_installed = {"lua_ls", "rust_analyzer", "ts_ls", "jdtls"},
+        ensure_installed = {"lua_ls", "rust_analyzer", "ts_ls", "jdtls", "clangd"},
         automatic_enable = {
           exclude = { "jdtls" },
         },
@@ -42,6 +42,76 @@ local nvim_jdtls_conf = {
       if jdtls.dap then
         jdtls.dap.setup_dap({ hotcodereplace = "auto" })
         jdtls.dap.setup_dap_main_class_configs()
+
+        -- ── Manual launch config (no auto-detected main) ──────────────────────
+        -- setup_dap_main_class_configs() scans source files for classes with a
+        -- literal main() method and registers a DAP launch config for each one.
+        -- If your project has no discoverable main — e.g. a library module, or
+        -- you want to launch a specific class that jdtls missed — uncomment the
+        -- block below and fill in mainClass and projectName.
+        --
+        -- HOW TO USE:
+        --   1. Set mainClass to the fully-qualified class name, e.g.:
+        --        mainClass = "com.example.MyApp"
+        --   2. Set projectName to the Eclipse project name jdtls assigned.
+        --      You can find it by running:
+        --        :lua print(vim.lsp.get_active_clients()[1].config.root_dir)
+        --      and matching it to what jdtls reports in :LspLog on import.
+        --   3. Uncomment the block, save, and re-open a Java file to re-trigger
+        --      on_attach (or :e to reload the buffer).
+        --   4. Run :DapContinue — your config appears in the picker alongside
+        --      any auto-detected main classes.
+        --
+        -- table.insert(require("dap").configurations.java, {
+        --   type        = "java",
+        --   request     = "launch",
+        --   name        = "Launch MyApp (manual)",
+        --   mainClass   = "com.example.MyApp",
+        --   projectName = "my-project",
+        --   -- classPaths and modulePaths are optional: jdtls resolves them from
+        --   -- the workspace index when left empty.
+        --   classPaths  = {},
+        --   modulePaths = {},
+        -- })
+
+        -- ── Remote / attach config ────────────────────────────────────────────
+        -- Use this when the JVM is already running externally (local Docker
+        -- container, a remote server, or a Spring Boot app started outside Neovim)
+        -- and you want to attach the debugger to it without launching a new process.
+        --
+        -- STEP 1 — start your JVM with JDWP enabled:
+        --   java -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005 -jar myapp.jar
+        --
+        --   suspend=n  → JVM starts immediately; attach at any time after boot.
+        --   suspend=y  → JVM pauses at startup and waits for a debugger to attach
+        --               before executing any code. Use this if you need to hit a
+        --               breakpoint in a static initialiser, @PostConstruct, or
+        --               any code that runs before the first HTTP request.
+        --
+        -- STEP 2 — uncomment the block below, set hostName and port to match,
+        --          then re-open a Java buffer to re-trigger on_attach.
+        --
+        -- STEP 3 — run :DapContinue. The picker shows this entry; selecting it
+        --          connects nvim-dap to the running JVM via JDWP. Breakpoints
+        --          you set in Neovim will suspend the remote process in-place.
+        --
+        -- NOTE: the remote JVM and Neovim must agree on source paths. If jdtls
+        -- has the project open (i.e. you opened a source file from that project),
+        -- source mapping is automatic. For a fully remote machine you may need to
+        -- mount the source tree or configure sourceContainers.
+        --
+        -- table.insert(require("dap").configurations.java, {
+        --   type     = "java",
+        --   request  = "attach",
+        --   name     = "Attach remote (localhost:5005)",
+        --   hostName = "localhost",   -- replace with remote IP/hostname if needed
+        --   port     = 5005,
+        -- })
+      else
+        vim.notify(
+          "jdtls: debugging unavailable — install DAP jars via :MasonInstall java-debug-adapter java-test",
+          vim.log.levels.WARN
+        )
       end
 
       local map = function(mode, lhs, rhs, desc)
@@ -252,6 +322,8 @@ local lsp_conf = {
     lsp.enable('lua_ls')
 
     lsp.enable('ts_ls')
+
+    lsp.enable('clangd')
 
     -- Explicitly disabled: jdtls is managed entirely by nvim-jdtls (see
     -- nvim_jdtls_conf above). lspconfig must not auto-start it.

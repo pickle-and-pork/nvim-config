@@ -7,7 +7,10 @@ conf = {
     },
     opts = {
         -- configuration goes here
-        lang = 'java'
+        lang = 'cpp',
+        description = {
+          position = "left"
+        }
     },
 }
 
