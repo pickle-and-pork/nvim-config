@@ -17,7 +17,7 @@ local mason_lsp_conf = {
         -- jdtls must be in ensure_installed so mason installs it on new machines.
         -- automatic_enable excludes it so lspconfig does NOT auto-start it —
         -- nvim-jdtls manages the jdtls lifecycle via its own FileType autocmd.
-        ensure_installed = {"lua_ls", "rust_analyzer", "ts_ls", "jdtls", "clangd"},
+        ensure_installed = {"lua_ls", "rust_analyzer", "ts_ls", "jdtls", "clangd", "sourcekit-lsp"},
         automatic_enable = {
           exclude = { "jdtls" },
         },
@@ -322,8 +322,14 @@ local lsp_conf = {
     lsp.enable('lua_ls')
 
     lsp.enable('ts_ls')
-
+ 
+    -- 1. Configure the servers (merges with defaults from nvim-lspconfig)
+    vim.lsp.config("clangd", {
+      cmd = { "clangd", "--background-index", "--clang-tidy" },
+      filetypes = { "c", "cpp", "objc", "objcpp" },
+    })
     lsp.enable('clangd')
+
 
     -- Explicitly disabled: jdtls is managed entirely by nvim-jdtls (see
     -- nvim_jdtls_conf above). lspconfig must not auto-start it.

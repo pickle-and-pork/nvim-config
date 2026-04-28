@@ -3,14 +3,15 @@ vim.opt.number = true
 vim.opt.numberwidth = 2
 vim.opt.signcolumn = 'yes'
 vim.opt.wrap = true
-vim.opt.scrolloff = 15
+vim.opt.scrolloff = 35
 vim.opt.sidescrolloff = 4
 
 -- Tabs/spaces
 vim.opt.expandtab = true
-vim.opt.shiftwidth = 2
-vim.opt.tabstop = 2
-vim.opt.softtabstop = 2
+local tab_size = 4
+vim.opt.shiftwidth = tab_size
+vim.opt.tabstop = tab_size
+vim.opt.softtabstop = tab_size
 vim.opt.smartindent = true
 vim.opt.breakindent = true
 
