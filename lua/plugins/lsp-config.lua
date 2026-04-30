@@ -17,7 +17,7 @@ local mason_lsp_conf = {
         -- jdtls must be in ensure_installed so mason installs it on new machines.
         -- automatic_enable excludes it so lspconfig does NOT auto-start it —
         -- nvim-jdtls manages the jdtls lifecycle via its own FileType autocmd.
-        ensure_installed = {"lua_ls", "rust_analyzer", "ts_ls", "jdtls", "clangd", "sourcekit-lsp", "groovyls"},
+        ensure_installed = {"lua_ls", "rust_analyzer", "ts_ls", "jdtls", "clangd", "groovyls"},
         automatic_enable = {
           exclude = { "jdtls" },
         },
@@ -148,9 +148,6 @@ local nvim_jdtls_conf = {
         if result.type == "ServiceReady" then
           vim.notify("jdtls: workspace ready", INFO)
         end
-      end,
-      ["textDocument/definition"] = function(err, result, ctx, config)
-        require("jdtls").open_classfile(err, result, ctx, config)
       end,
     }
 
@@ -341,15 +338,102 @@ local lsp_conf = {
     -- nvim_jdtls_conf above). lspconfig must not auto-start it.
     vim.lsp.config('jdtls', { autostart = false })
 
-    vim.keymap.set("n", "<leader>co", vim.lsp.buf.hover, { desc = "[C]ode Hover D[o]cumentation" })
-    vim.keymap.set("n", "<leader>cg", vim.lsp.buf.definition, { desc = "[C]ode [G]oto Defintion" })
-    vim.keymap.set("n", "<leader>cr", require("telescope.builtin").lsp_references, { desc = "[C]ode Show [R]eferences" })
-    vim.keymap.set("n", "<leader>ci", require("telescope.builtin").lsp_implementations, { desc = "[C]ode Show [I]mplementations" })
-    vim.keymap.set({"n","v"}, "<leader>ca", vim.lsp.buf.code_action, { desc = "Show [C]ode [A]ctions" })
-    vim.keymap.set("n", "<leader>cR", vim.lsp.buf.rename, { desc = "[C]ode [R]ename"})
-    vim.keymap.set("n", "<leader>cD", vim.lsp.buf.declaration, { desc = "[C]ode [D]eclaration"})
+    -- Set LSP keymaps only when a client actually attaches to the buffer.
+    -- This avoids "no client attached" / "not supported" errors from global
+    -- keymaps firing before (or without) an LSP server.
+    vim.api.nvim_create_autocmd("LspAttach", {
+      callback = function(ev)
+        local bufnr = ev.buf
+        local map = function(mode, lhs, rhs, desc)
+          vim.keymap.set(mode, lhs, rhs, { buffer = bufnr, desc = desc })
+        end
 
+        -- Neovim 0.12 vim.lsp.buf.* and Telescope LSP pickers check static
+        -- capabilities and reject servers like jdtls that register methods
+        -- dynamically via client/registerCapability. This helper sends the
+        -- raw LSP request directly, bypassing all capability gates.
+        local function lsp_request(method, handler)
+          local params = vim.lsp.util.make_position_params()
+          vim.lsp.buf_request(bufnr, method, params, handler)
+        end
 
+        local function on_definition(err, result, ctx)
+          if result == nil or (vim.islist(result) and #result == 0) then
+            vim.notify("No definition found", vim.log.levels.INFO)
+            return
+          end
+          -- Single result: jump directly. Multiple: show in Telescope.
+          if vim.islist(result) and #result == 1 then
+            result = result[1]
+          end
+          if not vim.islist(result) then
+            local uri = result.uri or result.targetUri
+            local range = result.range or result.targetSelectionRange
+            if uri and range then
+              local b = vim.uri_to_bufnr(uri)
+              vim.bo[b].buflisted = true
+              vim.api.nvim_set_current_buf(b)
+              local row = range.start.line
+              local col = range.start.character
+              vim.api.nvim_win_set_cursor(0, { row + 1, col })
+              return
+            end
+          end
+          -- Fallback for multiple results: use Telescope
+          require("telescope.builtin").lsp_definitions()
+        end
+
+        local function on_list_result(title, picker)
+          return function(err, result, ctx)
+            if result == nil or (vim.islist(result) and #result == 0) then
+              vim.notify("No " .. title .. " found", vim.log.levels.INFO)
+              return
+            end
+            picker()
+          end
+        end
+
+        map("n", "<leader>co", vim.lsp.buf.hover,                                                     "[C]ode Hover D[o]cumentation")
+        map("n", "<leader>cg", function()
+          lsp_request("textDocument/definition", on_definition)
+        end,                                                                                           "[C]ode [G]oto Definition")
+        map("n", "<leader>cr", function()
+          lsp_request("textDocument/references", on_list_result("references", require("telescope.builtin").lsp_references))
+        end,                                                                                           "[C]ode Show [R]eferences")
+        map("n", "<leader>ci", function()
+          lsp_request("textDocument/implementation", on_list_result("implementations", require("telescope.builtin").lsp_implementations))
+        end,                                                                                           "[C]ode Show [I]mplementations")
+        map({"n","v"}, "<leader>ca", vim.lsp.buf.code_action,                                         "Show [C]ode [A]ctions")
+        map("n", "<leader>cR", function()
+          -- rename also uses dynamic registration in jdtls
+          local word = vim.fn.expand("<cword>")
+          vim.ui.input({ prompt = "Rename: ", default = word }, function(new_name)
+            if new_name and new_name ~= "" and new_name ~= word then
+              vim.lsp.buf_request(bufnr, "textDocument/rename", vim.tbl_extend("force",
+                vim.lsp.util.make_position_params(), { newName = new_name }
+              ), function(err, result)
+                if err then
+                  vim.notify("Rename failed: " .. err.message, vim.log.levels.ERROR)
+                  return
+                end
+                if result then
+                  vim.lsp.util.apply_workspace_edit(result, "utf-16")
+                end
+              end)
+            end
+          end)
+        end,                                                                                           "[C]ode [R]ename")
+        map("n", "<leader>cD", function()
+          lsp_request("textDocument/declaration", function(err, result, ctx)
+            if result == nil or (vim.islist(result) and #result == 0) then
+              vim.notify("No declaration found", vim.log.levels.INFO)
+              return
+            end
+            vim.lsp.handlers["textDocument/declaration"](err, result, ctx)
+          end)
+        end,                                                                                           "[C]ode [D]eclaration")
+      end,
+    })
 
   end
 }

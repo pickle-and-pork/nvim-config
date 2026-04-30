@@ -19,3 +19,9 @@ vim.keymap.set("n", "<leader>wh", ":split<cr>", { desc = "[W]indow Split [H]oriz
 
 vim.keymap.set("v", "<", "<gv", { desc = "Indent left in visual mode" })
 vim.keymap.set("v", ">" , ">gv", { desc = "Indent right in visual mode" })
+
+-- Disable surprising/destructive default mappings
+vim.keymap.set("n", "s", "<Nop>")   -- substitute (same as cl, easy to hit by accident)
+vim.keymap.set("n", "S", "<Nop>")   -- substitute line (same as cc)
+vim.keymap.set("n", "Q", "<Nop>")   -- ex mode (nearly nobody uses this)
+vim.keymap.set("n", "Z", "<Nop>")   -- prefix for ZZ/ZQ — accidental :wq/:q!
