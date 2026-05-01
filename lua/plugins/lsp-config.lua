@@ -37,7 +37,9 @@ local nvim_jdtls_conf = {
     local INFO  = vim.log.levels.INFO
 
     local function on_attach(_, bufnr)
-      vim.notify("jdtls: attached", INFO)
+      -- local bufname = vim.fn.bufname(bufnr)
+      -- local ft = vim.bo[bufnr].filetype
+      -- vim.notify("jdtls: on_attach called (bufnr=" .. bufnr .. ", file=" .. bufname .. ", ft=" .. ft .. ")", INFO)
 
       if jdtls.dap then
         jdtls.dap.setup_dap({ hotcodereplace = "auto" })
@@ -118,29 +120,55 @@ local nvim_jdtls_conf = {
         vim.keymap.set(mode, lhs, rhs, { buffer = bufnr, desc = desc })
       end
 
-      map("n", "<leader>ji", jdtls.organize_imports,                          "[J]ava Organ[i]ze Imports")
-      map("n", "<leader>jv", jdtls.extract_variable,                          "[J]ava Extract [V]ariable")
-      map("n", "<leader>jV", jdtls.extract_variable_all,                      "[J]ava Extract [V]ariable (all)")
-      map("v", "<leader>jm", function() jdtls.extract_method({ visual = true }) end, "[J]ava Extract [M]ethod")
-      map("n", "<leader>jc", jdtls.extract_constant,                          "[J]ava Extract [C]onstant")
-      map("n", "<leader>js", jdtls.super_implementation,                      "[J]ava Go to [S]uper")
-      map("n", "<leader>jb", function() jdtls.compile("incremental") end,     "[J]ava [B]uild (incremental)")
-      map("n", "<leader>jB", function() jdtls.compile("full") end,            "[J]ava [B]uild Full")
-      map("n", "<leader>jU", jdtls.update_project_config,                     "[J]ava [U]pdate Build Config")
-      map("n", "<leader>jf", function()
-        require("telescope.builtin").lsp_dynamic_workspace_symbols()
-      end,                                                                       "[J]ava [F]ind in Classpath")
-      map("n", "<leader>jS", function()
-        require("telescope.builtin").live_grep({
-          search_dirs = { vim.fn.stdpath("data") .. "/lazy/nvim-jdtls" },
-          prompt_title = "Search nvim-jdtls source",
-        })
-      end,                                                                       "[J]dtls plugin [S]ource grep")
-      if jdtls.dap then
-        map("n", "<leader>jt", jdtls.dap.test_nearest_method,                 "[J]ava [T]est Nearest Method")
-        map("n", "<leader>jT", jdtls.dap.test_class,                          "[J]ava [T]est Class")
-        map("n", "<leader>jP", jdtls.dap.pick_test,                           "[J]ava [P]ick Test")
-      end
+        -- map("n", "<leader>ji", jdtls.organize_imports,                          "[J]ava Organ[i]ze Imports")
+        -- map("n", "<leader>jv", jdtls.extract_variable,                          "[J]ava Extract [V]ariable")
+        -- map("n", "<leader>jV", jdtls.extract_variable_all,                      "[J]ava Extract [V]ariable (all)")
+        -- map("v", "<leader>jm", function() jdtls.extract_method({ visual = true }) end, "[J]ava Extract [M]ethod")
+        -- map("n", "<leader>jc", jdtls.extract_constant,                          "[J]ava Extract [C]onstant")
+        -- map("n", "<leader>js", jdtls.super_implementation,                      "[J]ava Go to [S]uper")
+        -- map("n", "<leader>jb", function() jdtls.compile("incremental") end,     "[J]ava [B]uild (incremental)")
+        -- map("n", "<leader>jB", function() jdtls.compile("full") end,            "[J]ava [B]uild Full")
+        -- map("n", "<leader>jU", jdtls.update_project_config,                     "[J]ava [U]pdate Build Config")
+        -- map("n", "<leader>jf", function()
+        --   -- vim.notify("Telescope: lsp_dynamic_workspace_symbols called", INFO)
+        --   require("telescope.builtin").lsp_dynamic_workspace_symbols()
+        -- end,                                                                       "[J]ava [F]ind in Classpath")
+        -- map("n", "<leader>jS", function()
+        --   -- vim.notify("Telescope: live_grep called", INFO)
+        --   require("telescope.builtin").live_grep({
+        --     search_dirs = { vim.fn.stdpath("data") .. "/lazy/nvim-jdtls" },
+        --     prompt_title = "Search nvim-jdtls source",
+        --   })
+        -- end,                                                                       "[J]dtls plugin [S]ource grep")
+        -- map("n", "<leader>jD", function()
+        --   local bufnr = vim.api.nvim_get_current_buf()
+        --   local clients = vim.lsp.get_clients({ bufnr = bufnr })
+        --   local client_list = "No clients"
+        --   if #clients > 0 then
+        --     client_list = ""
+        --     for i, c in ipairs(clients) do
+        --       client_list = client_list .. c.name .. "(id=" .. c.id .. "),"
+        --     end
+        --   end
+        --   local bufname = vim.fn.bufname(bufnr)
+        --   -- vim.notify("DEBUG: bufnr=" .. bufnr .. " file=" .. bufname .. " clients=[" .. client_list .. "]", INFO)
+        --   
+        --   -- Check if keymap exists
+        --   local mapinfo = vim.api.nvim_buf_get_keymap(bufnr, "n")
+        --   local has_keymap = false
+        --   for _, m in ipairs(mapinfo) do
+        --     if m.lhs == "<leader>cg" then
+        --       has_keymap = true
+        --       break
+        --     end
+        --   end
+        --   -- vim.notify("Keymap <leader>cg exists: " .. tostring(has_keymap), INFO)
+        -- end,                                                                       "[J]dtls [D]ebug")
+        -- if jdtls.dap then
+        --   map("n", "<leader>jt", jdtls.dap.test_nearest_method,                 "[J]ava [T]est Nearest Method")
+        --   map("n", "<leader>jT", jdtls.dap.test_class,                          "[J]ava [T]est Class")
+        --   map("n", "<leader>jP", jdtls.dap.pick_test,                           "[J]ava [P]ick Test")
+        -- end
     end
 
     local handlers = {
@@ -158,9 +186,14 @@ local nvim_jdtls_conf = {
     vim.api.nvim_create_autocmd("FileType", {
       pattern = "java",
       callback = function()
+        -- local bufnr = vim.api.nvim_get_current_buf()
+        -- local bufname = vim.api.nvim_buf_get_name(bufnr)
+        -- vim.notify("jdtls: FileType java triggered (bufnr=" .. bufnr .. ", file=" .. bufname .. ")", INFO)
+
         -- jdt:// buffers are decompiled class files opened by jdtls — they are
         -- not real files on disk and must not trigger a new server start.
-        if vim.startswith(vim.api.nvim_buf_get_name(0), "jdt://") then
+        if vim.startswith(bufname, "jdt://") then
+          vim.notify("jdtls: jdt:// buffer, skipping", INFO)
           return
         end
 
@@ -189,6 +222,10 @@ local nvim_jdtls_conf = {
         local clients = vim.lsp.get_clients({ name = "jdtls" })
         for _, client in ipairs(clients) do
           if client.root_dir == root_dir then
+            vim.notify("jdtls: already running for root=" .. root_dir .. ", attaching to buffer", INFO)
+            -- Use proper API to attach client to this buffer (handles cleanup automatically)
+            local bufnr = vim.api.nvim_get_current_buf()
+            vim.lsp.buf_attach_client(bufnr, client.id)
             return
           end
         end
@@ -199,7 +236,7 @@ local nvim_jdtls_conf = {
           root_dir = vim.fn.expand("%:p:h")
           local project_name = vim.fn.fnamemodify(root_dir, ":t")
           local workspace_dir = vim.fn.expand("~/.local/share/nvim/jdtls-workspace/") .. project_name
-          vim.notify("jdtls: no build files found, starting syntax-only…", INFO)
+          vim.notify("jdtls: starting syntax-only (root=" .. project_name .. ", file=" .. bufname .. ")…", INFO)
           local config = cfg.make_syntax_config(root_dir, workspace_dir)
           config.on_attach = on_attach_syntax
           config.handlers = handlers
@@ -218,7 +255,7 @@ local nvim_jdtls_conf = {
           if f then f:write(build_system) f:close() end
 
           if build_system == "Syntax" then
-            vim.notify("jdtls: starting syntax-only (root: " .. project_name .. ")…", INFO)
+            vim.notify("jdtls: starting syntax-only (root=" .. project_name .. ", choice=Syntax)…", INFO)
             local config = cfg.make_syntax_config(root_dir, workspace_dir)
             config.on_attach = on_attach_syntax
             config.handlers  = handlers
@@ -234,7 +271,7 @@ local nvim_jdtls_conf = {
             overrides.maven_enabled  = false
             overrides.gradle_enabled = true
           end
-          vim.notify("jdtls: starting " .. build_system .. " (root: " .. project_name .. ")…", INFO)
+          vim.notify("jdtls: starting " .. build_system .. " (root=" .. project_name .. ", choice=" .. build_system .. ")…", INFO)
           local config = cfg.make_standard_config(root_dir, workspace_dir, on_attach, overrides)
           config.handlers = handlers
           jdtls.start_or_attach(config)
@@ -344,6 +381,20 @@ local lsp_conf = {
     vim.api.nvim_create_autocmd("LspAttach", {
       callback = function(ev)
         local bufnr = ev.buf
+        local client = vim.lsp.get_client_by_id(ev.data.client_id)
+        local client_name = client and client.name or "unknown"
+        local client_id = ev.data.client_id
+        local bufname = vim.fn.bufname(bufnr)
+        local ft = vim.bo[bufnr].filetype
+        
+        -- Debug: show all clients
+        local all_clients = vim.lsp.get_clients()
+        local client_list = ""
+        for i, c in ipairs(all_clients) do
+          client_list = client_list .. i .. ":" .. c.name .. ","
+        end
+        vim.notify("LspAttach: FIRED (clients=[" .. client_list .. "] client=" .. client_name .. ", id=" .. client_id .. ", bufnr=" .. bufnr .. ", file=" .. bufname .. ", ft=" .. ft .. ")", INFO)
+        
         local map = function(mode, lhs, rhs, desc)
           vim.keymap.set(mode, lhs, rhs, { buffer = bufnr, desc = desc })
         end
@@ -395,13 +446,18 @@ local lsp_conf = {
 
         map("n", "<leader>co", vim.lsp.buf.hover,                                                     "[C]ode Hover D[o]cumentation")
         map("n", "<leader>cg", function()
+          vim.notify("Keymap pressed: <leader>cg (goto definition)", INFO)
           lsp_request("textDocument/definition", on_definition)
         end,                                                                                           "[C]ode [G]oto Definition")
         map("n", "<leader>cr", function()
-          lsp_request("textDocument/references", on_list_result("references", require("telescope.builtin").lsp_references))
+          vim.notify("Keymap pressed: <leader>cr (references)", INFO)
+          -- Use Telescope directly for references (handles everything properly)
+          require("telescope.builtin").lsp_references()
         end,                                                                                           "[C]ode Show [R]eferences")
         map("n", "<leader>ci", function()
-          lsp_request("textDocument/implementation", on_list_result("implementations", require("telescope.builtin").lsp_implementations))
+          vim.notify("Keymap pressed: <leader>ci (implementations)", INFO)
+          -- Use Telescope directly for implementations
+          require("telescope.builtin").lsp_implementations()
         end,                                                                                           "[C]ode Show [I]mplementations")
         map({"n","v"}, "<leader>ca", vim.lsp.buf.code_action,                                         "Show [C]ode [A]ctions")
         map("n", "<leader>cR", function()
@@ -424,6 +480,7 @@ local lsp_conf = {
           end)
         end,                                                                                           "[C]ode [R]ename")
         map("n", "<leader>cD", function()
+          vim.notify("Keymap pressed: <leader>cD (declaration)", INFO)
           lsp_request("textDocument/declaration", function(err, result, ctx)
             if result == nil or (vim.islist(result) and #result == 0) then
               vim.notify("No declaration found", vim.log.levels.INFO)
@@ -432,6 +489,8 @@ local lsp_conf = {
             vim.lsp.handlers["textDocument/declaration"](err, result, ctx)
           end)
         end,                                                                                           "[C]ode [D]eclaration")
+        
+        vim.notify("LspAttach: keymaps set for bufnr=" .. bufnr .. " (client=" .. client_name .. ")", INFO)
       end,
     })
 
