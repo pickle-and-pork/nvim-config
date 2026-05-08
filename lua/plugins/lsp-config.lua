@@ -45,6 +45,22 @@ local lsp_conf = {
             filetypes = { "c", "cpp", "objc", "objcpp" },
         })
         lsp.enable('clangd')
+        local java_lang_s_home = vim.env.JAVA_LANGUAGE_SERVER_HOME
+        if (java_lang_s_home ~= nil) then
+            -- vim.notify('java language server detected', vim.log.levels.INFO)
+            lsp.config['java_language_server'] = {
+                cmd = {java_lang_s_home .. '/dist/lang_server_mac.sh'},
+                filetypes = {'java'},
+                root_markers = {
+                    {'.idea', '.settings', '.vscode'}, -- other IDE's indicating that it's a root
+                    {'pom.xml'}, -- only pom for now, but need to setup the gradle both through kotlin and/or gradle
+                    '.git'
+                }
+            }
+            lsp.enable('java_language_server')
+        else
+            vim.notify('java language server isn\'t setup', vim.log.levels.WARN)
+        end
 
     end
 }
