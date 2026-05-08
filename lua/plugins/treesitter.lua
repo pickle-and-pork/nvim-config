@@ -14,13 +14,17 @@ conf = {
     })
     vim.opt.rtp:prepend(treeSitterPath)
     nvim_treesitter.install({
-       'rust','cpp', 'java','kotlin','javascript','typescript', 'tsx','python','sql','html', 'xml','vim','vimdoc','lua','markdown','markdown_inline','gitignore'
+       'rust','cpp', 'java','kotlin','javascript','typescript', 'tsx','python','sql','html','xml','vim','vimdoc','lua','markdown','markdown_inline','gitignore', 'html', 'css'
     })
     vim.api.nvim_create_autocmd('FileType' , {
       pattern = {'rust','cpp', 'java','kotlin','javascript','typescript', 'tsx','python','sql','html', 'xml','vim','vimdoc','lua','markdown','markdown_inline','gitignore'},
       callback = function()
         vim.treesitter.start()
         vim.bo.indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
+        vim.opt_local.foldmethod = "expr"
+        vim.wo.foldexpr = 'v:lua.vim.treesitter.foldexpr()'
+        vim.opt_local.foldenable = true
+        vim.opt_local.foldlevel = 99
       end,
     })
 
@@ -30,3 +34,9 @@ conf = {
 
 
 return conf;
+
+
+
+
+
+
