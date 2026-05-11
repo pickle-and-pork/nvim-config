@@ -3,8 +3,6 @@ vim.opt.number = true
 vim.opt.numberwidth = 2
 vim.opt.signcolumn = 'yes'
 vim.opt.wrap = true
-vim.opt.scrolloff = 35
-vim.opt.sidescrolloff = 4
 
 -- Tabs/spaces
 vim.opt.expandtab = true
