@@ -14,10 +14,10 @@ conf = {
     })
     vim.opt.rtp:prepend(treeSitterPath)
     nvim_treesitter.install({
-       'rust','cpp', 'java','kotlin','javascript','typescript', 'tsx','python','sql','html','xml','vim','vimdoc','lua','markdown','markdown_inline','gitignore', 'html', 'css'
+       'rust','cpp', 'java','kotlin','javascript','typescript', 'tsx','python','sql','html','xml','vim','vimdoc','lua','markdown','markdown_inline','gitignore', 'html', 'css', 'json'
     })
     vim.api.nvim_create_autocmd('FileType' , {
-      pattern = {'rust','cpp', 'java','kotlin','javascript','typescript', 'tsx','python','sql','html', 'xml','vim','vimdoc','lua','markdown','markdown_inline','gitignore'},
+      pattern = {'rust','cpp', 'java','kotlin','javascript','typescript', 'tsx','python','sql','html', 'xml','vim','vimdoc','lua','markdown','markdown_inline','gitignore', 'json', 'jsonc', 'jsonl', 'json5'},
       callback = function()
         vim.treesitter.start()
         vim.bo.indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
