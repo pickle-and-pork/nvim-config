@@ -6,6 +6,20 @@ local snacks_plugin = {
   opts = {
     lazygit  = {},
     terminal = {},
+    -- floating terminal reference (telescope-style popup):
+    -- terminal = {
+    --   win = {
+    --     style     = "terminal",
+    --     position  = "float",
+    --     relative  = "editor",
+    --     width     = 0.8,
+    --     height    = 0.8,
+    --     border    = "rounded",
+    --     title     = " Terminal ",
+    --     title_pos = "center",
+    --     backdrop  = 60,
+    --   },
+    -- },
     scroll   = { enabled = true },
     animate  = {},
     notifier = { enabled = true, top_down = false, margin = { bottom = 7, right = 3 } },
