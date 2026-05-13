@@ -1,6 +1,7 @@
 -- Basics
 vim.opt.number = true
-vim.opt.numberwidth = 2
+vim.opt.relativenumber = true
+vim.opt.numberwidth = 1
 vim.opt.signcolumn = 'yes'
 vim.opt.wrap = true
 
@@ -34,6 +35,7 @@ vim.opt.updatetime = 100 -- ms, completion
 vim.opt.writebackup = false -- prevents editing files edited elsewhere
 vim.opt.cursorline = true --current line highlight
 vim.opt.cursorcolumn = true
+vim.opt.guicursor:append 't:ver25'
 
 -- Search Behaviour
 vim.opt.hlsearch = true --highlight all search

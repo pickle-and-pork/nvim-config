@@ -1,4 +1,4 @@
-conf = {
+local leet_code_conf = {
     "kawre/leetcode.nvim",
     dependencies = {
         -- include a picker of your choice, see picker section for more details
@@ -15,4 +15,4 @@ conf = {
     },
 }
 
-return conf
+return leet_code_conf

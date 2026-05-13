@@ -32,7 +32,7 @@ local mason_lsp_conf = {
 local lsp_conf = {
     "neovim/nvim-lspconfig",
     config = function()
-        local lspconf = vim.lsp.config
+        -- Languages
         local lsp = vim.lsp
 
         lsp.enable('lua_ls')
@@ -40,11 +40,12 @@ local lsp_conf = {
         lsp.enable('ts_ls')
 
         -- 1. Configure the servers (merges with defaults from nvim-lspconfig)
-        vim.lsp.config("clangd", {
+        lsp.config("clangd", {
             cmd = { "clangd", "--background-index", "--clang-tidy" },
             filetypes = { "c", "cpp", "objc", "objcpp" },
         })
         lsp.enable('clangd')
+
         local java_lang_s_home = vim.env.JAVA_LANGUAGE_SERVER_HOME
         if (java_lang_s_home ~= nil) then
             -- vim.notify('java language server detected', vim.log.levels.INFO)
@@ -61,6 +62,31 @@ local lsp_conf = {
         else
             vim.notify('java language server isn\'t setup', vim.log.levels.WARN)
         end
+
+
+        -- keymaps
+
+        -- These GLOBAL keymaps are created unconditionally when Nvim starts:
+        --
+        -- - "gra" (Normal and Visual mode) is mapped to |vim.lsp.buf.code_action()|
+        -- - "gri" is mapped to |vim.lsp.buf.implementation()|
+        -- - "grn" is mapped to |vim.lsp.buf.rename()|
+        -- - "grr" is mapped to |vim.lsp.buf.references()|
+        -- - "grt" is mapped to |vim.lsp.buf.type_definition()|
+        -- - "grx" is mapped to |vim.lsp.codelens.run()|
+        -- - "gO" is mapped to |vim.lsp.buf.document_symbol()|
+        -- - CTRL-S (Insert mode) is mapped to |vim.lsp.buf.signature_help()|
+        -- - |v_an| and |v_in| fall back to LSP |vim.lsp.buf.selection_range()| if
+        --   treesitter is not active.
+        -- - |gx| handles `textDocument/documentLink`. Example: with gopls, invoking gx
+        --   on "os" in this Go code will open documentation externally: >
+        --     package nvim
+        --     import (
+        --        "os"
+        --     )
+        --
+
+
 
     end
 }

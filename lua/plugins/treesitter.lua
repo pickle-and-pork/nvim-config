@@ -1,4 +1,4 @@
-conf = {
+local plugin = {
   'nvim-treesitter/nvim-treesitter',
   lazy = false,
   build = ':TSUpdate',
@@ -31,9 +31,14 @@ conf = {
   end
 }
 
+--TODO: install nvim-treesitter/nvim-treesitter-context
+
+local nvim_treesitter_context = {} 
 
 
-return conf;
+
+
+return plugin
 
 
 
