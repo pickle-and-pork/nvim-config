@@ -13,18 +13,20 @@ local mason_lsp_conf = {
         "neovim/nvim-lspconfig",
     },
     config = function()
-        require("mason-lspconfig").setup({
-            -- jdtls must be in ensure_installed so mason installs it on new machines.
-            -- automatic_enable excludes it so lspconfig does NOT auto-start it —
-            -- nvim-jdtls manages the jdtls lifecycle via its own FileType autocmd.
-            ensure_installed = {
-                "lua_ls",
-                "rust_analyzer",
-                "ts_ls",
-                "clangd",
-                "groovyls"
-            },
-        })
+        local servers = {
+            "lua_ls",
+            "rust_analyzer",
+            "ts_ls",
+            "clangd",
+            "groovyls",
+        }
+
+        -- no custom java home → let mason install java-language-server
+        if vim.env.JAVA_LANGUAGE_SERVER_HOME == nil then
+            table.insert(servers, "java_language_server")
+        end
+
+        require("mason-lspconfig").setup({ ensure_installed = servers })
     end
 }
 
@@ -46,22 +48,7 @@ local lsp_conf = {
         })
         lsp.enable('clangd')
 
-        local java_lang_s_home = vim.env.JAVA_LANGUAGE_SERVER_HOME
-        if (java_lang_s_home ~= nil) then
-            -- vim.notify('java language server detected', vim.log.levels.INFO)
-            lsp.config['java_language_server'] = {
-                cmd = {java_lang_s_home .. '/dist/lang_server_mac.sh'},
-                filetypes = {'java'},
-                root_markers = {
-                    {'.idea', '.settings', '.vscode'}, -- other IDE's indicating that it's a root
-                    {'pom.xml'}, -- only pom for now, but need to setup the gradle both through kotlin and/or gradle
-                    '.git'
-                }
-            }
-            lsp.enable('java_language_server')
-        else
-            vim.notify('java language server isn\'t setup', vim.log.levels.WARN)
-        end
+
 
 
         -- keymaps
@@ -85,7 +72,8 @@ local lsp_conf = {
         --        "os"
         --     )
         --
-
+        local builtin = require('telescope.builtin')
+        vim.keymap.set('n', 'grr', builtin.lsp_references, {desc = 'Find References'})
 
 
     end
